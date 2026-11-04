@@ -15,6 +15,9 @@ def seed_everything(seed: int):
 
 
 def get_device():
+    forced = os.environ.get("FCT_DEVICE")  # e.g. FCT_DEVICE=cpu for smoke tests
+    if forced:
+        return torch.device(forced)
     if torch.cuda.is_available():
         return torch.device("cuda")
     if getattr(torch.backends, "mps", None) and torch.backends.mps.is_available():

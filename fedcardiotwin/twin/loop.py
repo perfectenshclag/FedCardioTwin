@@ -14,7 +14,9 @@ Reported metrics:
                                                consecutive recordings?)
   backward_transfer                           (forgetting on early records)
 Raw per-record arrays are returned for post-hoc analyses (e.g. conformal
-coverage tracked across twin updates) without re-running.
+coverage tracked across twin updates, alert baselines, gain vs. number of
+prior records) without re-running. The *_all arrays cover every record of
+every stream, including each patient's first record (t = 0).
 """
 import numpy as np
 import torch
@@ -95,6 +97,8 @@ def run_twin_evaluation(base_model, streams, X, Y, device, cfg):
     cold_probs, warm_probs, true_ys = [], [], []
     steps_idx, alert_scores, label_changed = [], [], []
     fgt_first, fgt_second = [], []
+    log_all = {"pid": [], "t": [], "cold": [], "twin": [], "warm": [],
+               "y": [], "guard": []}
 
     guard = getattr(cfg, "guard", False)
     prox_weight = getattr(cfg, "prox_weight", 0.0)
@@ -114,6 +118,11 @@ def run_twin_evaluation(base_model, streams, X, Y, device, cfg):
             # Otherwise fall back to the global prediction -> warm cannot
             # underperform cold beyond noise (personalization_gain >= 0).
             p_warm = p_twin if (not guard or twin_beats_base) else p_cold
+            for k, v in (("pid", pid), ("t", t), ("cold", p_cold),
+                         ("twin", p_twin), ("warm", p_warm),
+                         ("y", Y[row].astype(np.float32)),
+                         ("guard", bool(twin_beats_base))):
+                log_all[k].append(v)
             if t > 0:  # records after the first are the evaluation targets
                 cold_probs.append(p_cold)
                 warm_probs.append(p_warm)
@@ -192,4 +201,5 @@ def run_twin_evaluation(base_model, streams, X, Y, device, cfg):
     }
     arrays = {"cold": cold_probs, "warm": warm_probs, "y": true_ys,
               "step": steps_idx, "alert": alert_scores, "changed": label_changed}
+    arrays.update({f"{k}_all": np.asarray(v) for k, v in log_all.items()})
     return summary, arrays

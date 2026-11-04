@@ -55,7 +55,7 @@ def make_synthetic_cache(root):
 
 def main():
     seed_everything(0)
-    device = torch.device("cpu")
+    device = torch.device(os.environ.get("FCT_DEVICE", "cpu"))
     root = tempfile.mkdtemp(prefix="fct_smoke_")
     try:
         make_synthetic_cache(root)
@@ -86,12 +86,13 @@ def main():
 
         # every FL strategy; keep the deployed states of the last one
         for strategy in ["local", "fedavg", "fedprox", "fedbn", "fedavgm",
-                         "ditto", "fedper"]:
-            res, history, comm, gmodel, deployed = run_federated(
+                         "ditto", "fedper", "fedrep", "fedbabu"]:
+            res, history, comm, gmodel, deployed, preds = run_federated(
                 clients, N_CLASSES, cfg.fl, device, strategy=strategy, seed=0)
             assert "MEAN" in res and np.isfinite(res["MEAN"]["f1"])
             assert len(history) >= 1 and "cum_upload_mb" in history[-1]
-            assert set(deployed) == {c.name for c in clients}
+            assert set(deployed) == {c.name for c in clients} == set(preds)
+            assert "comm" in res and "timing" in res and "snapshots" in res
             print(f"[ok] {strategy}: mean F1={res['MEAN']['f1']:.3f} "
                   f"comm={comm:.1f}MB history={len(history)}")
 

@@ -58,6 +58,29 @@ python scripts/run_experiments.py --stage conformal
 python scripts/make_tables.py
 ```
 
+## J-BHI revision (JBHI-04805-2026): reproducing every revised table
+
+All revision features default to the submitted protocol, so the commands
+above still reproduce the original setup. Revision runs (Kaggle, 2 x T4;
+`notebooks/FedCardioTwin_Revision_Kaggle.ipynb` runs them unattended in four
+batches A1, A2, B, C):
+
+| Revised result | Command (add `--cache-dir/--results-dir/--ckpt-dir`) |
+|---|---|
+| Table III (round 60) + round-budget curves | `--stage federated --strategies <s> --rounds 120 --main-round 60 --snapshot-rounds 20 40 60 80 100 120 --eval-every 5` for every strategy incl. `fedrep fedbabu`; `--stage centralized`; `--stage finetune` (FedAvg+FT, Centralized+FT); `scripts/ensemble_eval.py --fed-clients ...` |
+| Personalization depth | `--strategies fedper --local-blocks 1 --tag _depth1` (and `2`) |
+| Aggregation weights | `--weighting equal --tag _eqw`, `--weighting label --tag _fedla` |
+| Partial participation / dropout | `--participation 0.5 --tag _part50`, `--dropout 0.3 --tag _drop30` |
+| Reduced leads | `--leads 6|3|2|1 --tag _leads<k>` |
+| Differential privacy | `--norm gn --tag _gn`, `--dp-epsilon 8|3|1 --tag _dp<k>` (needs `opacus==1.5.4`) |
+| LOHO + onboarding curve | `--stage loho` |
+| Twin (Track B, full logging) / federated twin | `--stage twin`; `--strategies fedper --twin-split --tag _twinfed` then `--stage twin_fed` |
+| Measured compute | `scripts/profile_compute.py` |
+| All post-hoc analyses (CPU) | `scripts/posthoc.py` (per-class, key classes, bootstrap, repeated-split conformal, UCB rule, class-wise/weighted risk, calibration-size curves, alert baselines, comm/timing, stopping rule, PTB-XL patient-disjoint check) |
+| Result figures | `scripts/make_revision_figures.py --results-dir results --out-dir figures` |
+
+Local CPU tests: `FCT_DEVICE=cpu FCT_WORKERS=0 python scripts/run_experiments.py ... --preset fast --max-records 200`.
+
 ## Experiment matrix (the paper's tables)
 
 | Table | Command | What it shows |

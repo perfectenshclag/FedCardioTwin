@@ -47,14 +47,18 @@ _TRANSFORMS = (gaussian_noise, amplitude_scale, time_mask, baseline_wander,
 
 
 class ECGAugment:
-    """Each transform fires independently with probability `p`."""
+    """Each transform fires independently with probability `p`.
+    lead_dropout is skipped for reduced-lead inputs (<= 3 leads), where
+    zeroing up to two leads could blank the whole signal."""
 
-    def __init__(self, p=0.5, seed=None):
+    def __init__(self, p=0.5, seed=None, allow_lead_dropout=True):
         self.p = p
         self.rng = np.random.RandomState(seed)
+        self.transforms = tuple(t for t in _TRANSFORMS
+                                if allow_lead_dropout or t is not lead_dropout)
 
     def __call__(self, x):
-        for t in _TRANSFORMS:
+        for t in self.transforms:
             if self.rng.uniform() < self.p:
                 x = t(x, self.rng)
         return np.ascontiguousarray(x)
